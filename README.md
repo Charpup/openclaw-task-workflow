@@ -1,75 +1,212 @@
-# Task Workflow V3
+# Task Workflow
 
-智能任务调度系统 V3 - 支持文件持久化、进度追踪和自动归档。
+[![Version](https://img.shields.io/badge/version-3.1.1-blue.svg)](https://github.com/Charpup/openclaw-task-workflow/releases/tag/v3.1.1)
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-4CAF50.svg)](https://openclaw.ai)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![evals](https://img.shields.io/badge/evals-3%20cases-blueviolet.svg)](evals/evals.json)
 
-## 特性
+> DAG-based intelligent task scheduling for OpenClaw agents. Resolves task dependencies via topological sort, scores complexity, and persists progress to daily markdown files across sessions.
 
-- ✅ DAG 依赖分析和拓扑排序
-- ✅ 任务复杂度自动计算
-- ✅ 动态任务插入
-- ✅ **文件持久化追踪** (V3 新增)
-- ✅ **自动归档机制** (V3 新增)
-- ✅ **OpenClaw Cron 集成** (V3 新增)
+智能任务调度系统 — 支持 DAG 依赖分析、复杂度排序、文件持久化追踪和自动归档。
 
-## 快速开始
+---
+
+## AI Agent Quick Reference
+
+```yaml
+# Skill identity (SKILL.md frontmatter)
+name: task-workflow        # Note: was "task-workflow-v3" before v3.1.1
+version: "3.1.1"
+triggers:
+  - "manage tasks with dependencies"
+  - "schedule tasks"
+  - "DAG dependency"
+  - "task backlog"
+  - "init daily task file"
+  - "dependency resolution"
+
+# Runtime requirements
+requires:
+  bins: [python3]
+  env: []
+
+# Install
+run: pip3 install pyyaml
+```
+
+**When to invoke:**
+- Managing 5+ interdependent tasks that span multiple sessions
+- Need automatic dependency resolution (topological sort / DAG)
+- Want complexity-based task batching and ordering
+- Need persistent cross-session progress tracking with auto-migration
+
+**When NOT to invoke:**
+- Simple sequential tasks with no dependencies
+- Single-session, quick one-off work (< 3 tasks)
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **DAG Scheduling** | Topological sort for correct dependency ordering |
+| **Complexity Scoring** | 1–10 scale; lower = scheduled earlier in a batch |
+| **Dynamic Insertion** | Add tasks mid-execution without restart |
+| **File Persistence** | Daily markdown in `~/.openclaw/workspace/task_backlog/` |
+| **Auto Migration** | Midnight CST moves pending tasks to next day's file |
+| **Cron Integration** | OpenClaw Cron API support for daily init and cleanup |
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/Charpup/openclaw-task-workflow.git \
+  ~/.openclaw/skills/task-workflow
+pip3 install pyyaml
+```
+
+---
+
+## Quick Start
+
+### Python API
 
 ```python
 from lib.task_scheduler import TaskScheduler, TaskNode
 
-# 创建任务
 tasks = [
-    TaskNode(id="research", name="技术调研", estimated_time="medium"),
-    TaskNode(id="implement", name="实现方案", depends_on=["research"], estimated_time="long")
+    TaskNode(id="research",   name="Research API options", estimated_time="medium"),
+    TaskNode(id="implement",  name="Implement solution",   estimated_time="long",  depends_on=["research"]),
+    TaskNode(id="test",       name="Write tests",          estimated_time="short", depends_on=["implement"]),
+    TaskNode(id="deploy",     name="Deploy to prod",       estimated_time="short", depends_on=["test"]),
 ]
 
-# 调度 (自动落盘)
 scheduler = TaskScheduler(enable_persistence=True)
 batches = scheduler.schedule_tasks(tasks)
+# Batch 1: research
+# Batch 2: implement
+# Batch 3: test
+# Batch 4: deploy
 ```
 
-## CLI 使用
+### CLI
 
 ```bash
-# 初始化今日任务文件
-python cli.py init-daily
+# Initialize today's task file
+python3 cli.py init-daily
 
-# 列出任务
-python cli.py list
+# Add tasks
+python3 cli.py add research "Research API options" --time medium
+python3 cli.py add implement "Implement solution" --time long --depends-on research
 
-# 添加任务
-python cli.py add task-id "Task Name" --time medium
+# List tasks (shows dependency order and current status)
+python3 cli.py list
 
-# 更新状态
-python cli.py update task-id completed
+# Update status
+python3 cli.py update research completed --notes "Chose REST API with OAuth"
 
-# 运行演示
-python cli.py demo
+# Log work detail
+python3 cli.py log implement --detail "Started, need to handle token refresh"
+
+# Run demo
+python3 cli.py demo
 ```
 
-## 文件落盘
+---
 
-任务文档自动保存到:
+## File Persistence
+
+Progress is saved to daily markdown files at:
+
 ```
-/root/.openclaw/workspace/task_backlog/task-workflow-progress-YYYY-MM-DD.md
+~/.openclaw/workspace/task_backlog/
+├── task-workflow-progress-2026-02-24.md   # archived
+├── task-workflow-progress-2026-02-25.md   # today (active)
+└── task-workflow-progress-2026-02-26.md   # pre-created
 ```
 
-## Cron 配置
+Each file contains:
+- Task definitions with IDs, status, dependencies, and complexity scores
+- Batch schedule (dependency-ordered groups)
+- Session logs per task
+- Timestamps for all state transitions
+
+Pending tasks auto-migrate to the next day's file at midnight CST.
+
+---
+
+## Complexity Scoring Guide
+
+| Score | Meaning | Examples |
+|-------|---------|---------|
+| 1–3 | Simple, well-understood | Documentation, config changes |
+| 4–6 | Moderate, some unknowns | New API integration, refactor |
+| 7–10 | Complex, high uncertainty | Distributed system design, perf optimization |
+
+Lower complexity = scheduled earlier within a batch (to unblock dependents sooner).
+
+---
+
+## Cron Configuration
 
 ```bash
-# 生成配置
-python cli.py setup-cron
+python3 cli.py setup-cron
 ```
 
-默认配置:
-- `0 0 * * *` - 每日初始化新文件
-- `0 1 * * *` - 清理30天前的旧文件
+Default schedule (uses OpenClaw Cron API):
 
-## 测试
+| Schedule | Job |
+|----------|-----|
+| `0 0 * * *` (midnight CST) | Initialize new daily task file |
+| `0 1 * * *` (1 AM CST) | Clean up files older than 30 days |
+
+---
+
+## Evals
+
+Test cases in [`evals/evals.json`](evals/evals.json) follow the skill-creator standard:
+
+| ID | Scenario | Expected Trigger |
+|----|----------|-----------------|
+| 1 | Schedule 5 tasks with DAG dependencies | ✅ Yes |
+| 2 | Initialize today's daily task file | ✅ Yes |
+| 3 | Mark a task completed with notes | ✅ Yes |
+
+---
+
+## Version History
+
+| Version | Changes |
+|---------|---------|
+| **v3.1.1** | Fix `name: task-workflow-v3` → `name: task-workflow` (kebab-case compliance); add `metadata.openclaw`; add `evals/evals.json` |
+| **v3.0.0** | V3 rewrite: file persistence, auto-archive, cron integration, `cli.py` |
+
+---
+
+## Integration: TriadDev Golden Triangle
+
+This skill is the scheduling backbone of the **TriadDev** workflow:
+
+```
+📋 planning-with-files   →   📊 task-workflow   →   🧪 tdd-sdd-development
+  (task_plan.md)              (batch schedule)         (SPEC.yaml + tests)
+```
+
+Use [triadev](https://github.com/Charpup/triadev) to orchestrate all three with one command.
+
+---
+
+## Testing
 
 ```bash
 pytest tests/ -v
 ```
 
-## 文档
+---
 
-详见 [SKILL.md](SKILL.md)
+## License
+
+MIT — [Charpup](https://github.com/Charpup)
