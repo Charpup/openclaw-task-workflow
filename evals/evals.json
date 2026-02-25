@@ -1,0 +1,56 @@
+{
+  "skill_name": "task-workflow",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have 5 tasks for my project: research-api (no deps), design-schema (depends on research-api), implement-auth (depends on design-schema), write-tests (depends on implement-auth), deploy (depends on write-tests and implement-auth). Schedule these with DAG dependency resolution.",
+      "expected_output": "Builds a dependency DAG, performs topological sort, groups tasks into batches: Batch 1: research-api → Batch 2: design-schema → Batch 3: implement-auth → Batch 4: write-tests → Batch 5: deploy.",
+      "assertions": [
+        {
+          "text": "Output identifies correct batch ordering",
+          "type": "llm_judge",
+          "criteria": "Tasks are scheduled in dependency order with research-api first and deploy last, correctly resolving the DAG."
+        },
+        {
+          "text": "Mentions DAG or dependency resolution",
+          "type": "contains_any",
+          "values": ["DAG", "dependency", "batch", "topological", "schedule"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Initialize the daily task workflow file for today.",
+      "expected_output": "Creates a new daily markdown file at ~/.openclaw/workspace/task_backlog/task-workflow-progress-YYYY-MM-DD.md with proper headers and empty task queue.",
+      "assertions": [
+        {
+          "text": "Creates or references the daily markdown file",
+          "type": "contains_any",
+          "values": ["task-workflow-progress", "task_backlog", "init-daily", "daily file"]
+        },
+        {
+          "text": "File path includes date",
+          "type": "llm_judge",
+          "criteria": "The response references a date-stamped file path following the task-workflow naming convention."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Mark task 'implement-auth' as completed with a note that JWT tokens were used.",
+      "expected_output": "Updates the task status to 'completed' in the daily markdown file, appends the JWT note to the task log entry.",
+      "assertions": [
+        {
+          "text": "References status update to completed",
+          "type": "contains_any",
+          "values": ["completed", "implement-auth", "status", "update"]
+        },
+        {
+          "text": "Note about JWT is captured",
+          "type": "contains_any",
+          "values": ["JWT", "note", "log"]
+        }
+      ]
+    }
+  ]
+}

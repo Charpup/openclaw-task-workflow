@@ -1,6 +1,18 @@
 ---
-name: task-workflow-v3
+name: task-workflow
 description: Intelligent task scheduling system with dependency analysis, complexity scoring, and file persistence. Use when managing multi-task projects with dependencies, need automatic batch scheduling, or require progress tracking across sessions. Supports DAG-based dependency resolution and automatic daily archiving.
+metadata:
+  openclaw:
+    emoji: "📊"
+    requires:
+      bins: ["python3"]
+      env: []
+    os: ["linux", "macos", "windows"]
+    install:
+      - id: "pip-deps"
+        kind: "shell"
+        command: "pip3 install pyyaml"
+        label: "Install Python YAML dependency"
 ---
 
 # Task Workflow V3
