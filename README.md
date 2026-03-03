@@ -5,6 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![evals](https://img.shields.io/badge/evals-3%20cases-blueviolet.svg)](evals/evals.json)
+[![Oathe Security](https://img.shields.io/badge/Oathe-86%2F100%20SAFE-brightgreen.svg)](https://oathe.ai/report/Charpup/openclaw-task-workflow)
 
 > DAG-based intelligent task scheduling for OpenClaw agents. Resolves task dependencies via topological sort, scores complexity, and persists progress to daily markdown files across sessions.
 
