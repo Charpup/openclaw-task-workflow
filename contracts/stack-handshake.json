@@ -1,0 +1,15 @@
+{
+  "contractVersion": "1.0.0",
+  "component": "task-workflow",
+  "interface": {
+    "health": "python cli.py --help",
+    "capabilities": [
+      "dag-scheduling",
+      "daily-task-persistence",
+      "progress-logging",
+      "cron-payload-generation"
+    ],
+    "export_state": "python scripts/stack_contract.py export --output <file>",
+    "import_state": "python scripts/stack_contract.py import --input <file>"
+  }
+}
