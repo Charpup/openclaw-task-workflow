@@ -1,15 +1,27 @@
 {
-  "contractVersion": "1.0.0",
+  "contractVersion": "2.0.0",
   "component": "task-workflow",
+  "role": "DAG-based task scheduler",
   "interface": {
-    "health": "python cli.py --help",
+    "reads": {
+      "triadev-handoff.json": ["planning.tasks_extracted"]
+    },
+    "writes": {
+      "triadev-handoff.json": ["scheduling.status", "scheduling.batches"]
+    },
     "capabilities": [
       "dag-scheduling",
-      "daily-task-persistence",
-      "progress-logging",
-      "cron-payload-generation"
+      "complexity-scoring",
+      "batch-ordering",
+      "dynamic-task-insertion",
+      "daily-task-persistence"
     ],
-    "export_state": "python scripts/stack_contract.py export --output <file>",
-    "import_state": "python scripts/stack_contract.py import --input <file>"
+    "scripts": {
+      "scheduler": "python scripts/task_scheduler.py",
+      "persistence": "python scripts/task_persistence.py"
+    }
+  },
+  "dependencies": {
+    "planning-with-files": ">=2.10.0"
   }
 }

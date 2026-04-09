@@ -1,175 +1,209 @@
 ---
 name: task-workflow
 description: >-
-  Intelligent task scheduling system with dependency analysis, complexity scoring, and file persistence. Use when managing multi-task projects with dependencies, need automatic batch scheduling, or require progress tracking across sessions. Supports DAG-based dependency resolution and automatic daily archiving.
+  TRIGGER: task scheduling, dependency analysis, DAG scheduling, batch ordering,
+  task dependencies, complexity scoring, multi-task project.
+  Intelligent task scheduling with DAG-based dependency resolution, complexity scoring,
+  and batch ordering. Reads tasks from task_plan.md (planning-with-files output),
+  builds a dependency graph, and produces an optimal execution schedule.
+  Use when managing 5+ interdependent tasks. NOT for simple sequential task lists.
 ---
 
-# Task Workflow V3
+# Task Workflow v3.1 — DAG-Based Task Scheduler
 
-智能任务调度系统 — 支持依赖分析、复杂度排序、动态任务插入、文件持久化追踪和自动归档。
+Schedule interdependent tasks into optimal execution batches using dependency analysis
+and complexity scoring.
 
-## Quick Start
+## Role in the Golden Triangle
 
-### 1. Initialize Workflow
+Task-workflow sits between **planning** and **execution**:
 
-```python
-from task_workflow import TaskWorkflowV3
-
-workflow = TaskWorkflowV3("/root/.openclaw/workspace/task_backlog")
-workflow.init_daily_file()
+```
+task_plan.md (planning-with-files)
+      ↓ extract tasks
+task-workflow: build DAG → score complexity → batch tasks
+      ↓ write schedule
+triadev-handoff.json → execution (direct or via tdd-sdd)
 ```
 
-### 2. Add Tasks
-
-```python
-tasks = [
-    {
-        "id": "research-a",
-        "name": "调研方案A",
-        "complexity": 4.2,
-        "dependencies": [],
-        "status": "pending"
-    },
-    {
-        "id": "summary",
-        "name": "汇总分析",
-        "complexity": 5.0,
-        "dependencies": ["research-a"],
-        "status": "pending"
-    }
-]
-
-for task in tasks:
-    workflow.add_task(task)
-```
-
-### 3. Analyze and Schedule
-
-```python
-# Build dependency DAG and schedule batches
-schedule = workflow.analyze_and_schedule()
-
-# Output:
-# Batch 1: research-a (complexity: 4.2)
-# Batch 2: summary (complexity: 5.0, depends on: research-a)
-```
-
-### 4. Update Progress
-
-```python
-workflow.update_task_status("research-a", "completed")
-workflow.update_task_status("summary", "running")
-```
-
-### 5. Check Status
-
-```python
-status = workflow.get_status()
-print(f"Completed: {status['completed']}/{status['total']}")
-```
+**Boundary clarity:**
+- task_plan.md is the **plan** (human-readable, managed by planning-with-files)
+- triadev-handoff.json is the **schedule** (machine-readable, managed by task-workflow)
+- progress.md is the **log** (managed by planning-with-files, not task-workflow)
 
 ## When to Use
 
-**Use this skill when:**
-- Managing projects with 5+ interdependent tasks
-- Need automatic dependency resolution
-- Want complexity-based task ordering
-- Require persistent progress tracking
-- Working across multiple sessions
+**Use when:**
+- Managing 5+ interdependent tasks
+- Tasks have dependency relationships (B cannot start before A)
+- Need to identify which tasks can run in parallel
+- Working across multiple sessions and need persistent schedule state
 
 **Skip when:**
-- Simple sequential tasks without dependencies
-- Quick one-off tasks
-- Single-session work
+- Simple sequential tasks (just do them in order)
+- Fewer than 5 tasks with no dependencies
+- Single-session quick work
 
-## File Format
+## Core Workflow
 
-Workflow stores data in daily markdown files:
+### Step 1: Extract Tasks from task_plan.md
 
-```
-~/.openclaw/workspace/task_backlog/
-├── task-workflow-progress-2026-02-18.md  # Yesterday (archived)
-├── task-workflow-progress-2026-02-19.md  # Today (active)
-└── task-workflow-progress-2026-02-20.md  # Tomorrow (pre-created)
-```
+Read the existing `task_plan.md` and identify actionable work units.
+Each task needs:
 
-See [references/file-format.md](references/file-format.md) for complete format specification.
-
-## Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **DAG Scheduling** | Topological sort for dependency resolution |
-| **Complexity Scoring** | 1-10 scale, lower = batch earlier |
-| **Dynamic Insertion** | Add tasks mid-execution without restart |
-| **Auto Migration** | CST 0:00 moves pending tasks to new day |
-| **Cron Integration** | OpenClaw Cron API support |
-
-## Dependencies
-
-Task dependencies use simple ID references:
-
-```python
+```json
 {
-    "id": "summary",
-    "dependencies": ["research-a", "research-b"]
+  "id": "research-gateways",
+  "name": "Research API gateway solutions",
+  "complexity": 4,
+  "dependencies": []
 }
 ```
 
-The system builds a DAG and schedules tasks in optimal batches.
+**Complexity scoring (1-10):**
+- **1-3 (Simple):** Well-understood, single-file, < 5 tool calls
+- **4-6 (Moderate):** Some exploration, multi-file, 5-15 tool calls
+- **7-10 (Complex):** Significant unknowns, architecture decisions, > 15 tool calls
 
-## Complexity Scoring
+### Step 2: Build Dependency Graph (DAG)
 
-Score tasks 1-10 based on:
-- **1-3**: Simple, well-understood tasks
-- **4-6**: Moderate complexity, some unknowns
-- **7-10**: Complex, high uncertainty
-
-Lower complexity tasks are batched first.
-
-## Architecture
+Construct a directed acyclic graph from task dependencies:
 
 ```
-TaskWorkflowV3
-├── init_daily_file()      # Create daily markdown
-├── add_task()             # Add to queue
-├── analyze_and_schedule() # Build DAG, create batches
-├── update_task_status()   # Update progress
-├── get_status()           # Report statistics
-└── migrate_tasks()        # Daily auto-migration
+research-gateways ──→ compare-options ──→ write-recommendation
+                                    ↗
+research-pricing  ──────────────────
 ```
 
-## Cron Configuration
+**Validation rules:**
+- All dependency IDs must reference existing tasks
+- No circular dependencies allowed (detect and report cycles)
+- Missing dependency = error, not silent skip
 
-```yaml
-# config/cron.yaml
-cron_jobs:
-  - name: task-workflow-daily-init
-    schedule: "0 0 * * *"  # CST 0:00
-    command: "python -m task_workflow_v3.cli init-daily"
-  
-  - name: task-workflow-cleanup
-    schedule: "0 1 * * *"
-    command: "python -m task_workflow_v3.cli cleanup --days 30"
+### Step 3: Topological Sort + Batch Grouping
+
+1. Find all tasks with no unresolved dependencies (in-degree = 0)
+2. Group them into a batch, sorted by complexity (lowest first)
+3. Remove completed batch from graph, recalculate in-degrees
+4. Repeat until all tasks are scheduled
+
+**Output format (batches):**
+```
+Batch 1: [research-gateways, research-pricing]  (parallel, no deps)
+Batch 2: [compare-options]                       (depends on batch 1)
+Batch 3: [write-recommendation]                  (depends on batch 2)
 ```
 
-## V2 to V3 Migration
+### Step 4: Write Schedule to Handoff File
 
-| Feature | V2 | V3 |
-|---------|-----|-----|
-| File persistence | ❌ | ✅ Markdown files |
-| Progress tracking | ❌ Session-only | ✅ File-based |
-| Auto archive | ❌ | ✅ Daily migration |
-| Cron integration | ❌ | ✅ OpenClaw API |
+If used with triadev, write the schedule to `triadev-handoff.json`:
 
-See [references/v3-migration.md](references/v3-migration.md) for full migration guide.
+```json
+{
+  "scheduling": {
+    "status": "complete",
+    "batches": [
+      ["research-gateways", "research-pricing"],
+      ["compare-options"],
+      ["write-recommendation"]
+    ]
+  }
+}
+```
 
-## References
+### Step 5: Track Execution Progress
 
-- **File Format:** [references/file-format.md](references/file-format.md)
-- **Migration Guide:** [references/v3-migration.md](references/v3-migration.md)
-- **API Documentation:** See Python docstrings
+As tasks complete:
+1. Update task status in the schedule
+2. Check if next batch is unblocked (all dependencies satisfied)
+3. Report progress summary
 
----
+## Dynamic Task Insertion
 
-*Task Workflow V3 — Intelligent scheduling for complex projects.*
+New tasks can be added mid-execution:
+
+1. Define the new task with its dependencies
+2. Re-run DAG analysis on remaining (non-completed) tasks
+3. Insert into appropriate batch
+4. Announce the schedule change
+
+## Standalone Usage (Without TriaDev)
+
+Task-workflow works independently. Without triadev-handoff.json:
+- Read tasks from user input or task_plan.md directly
+- Output schedule as formatted text
+- Track progress in memory within the session
+
+## Helper Scripts
+
+Optional Python scripts in `scripts/` for deterministic computation:
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `task_scheduler.py` | DAG sort + batch grouping | `python scripts/task_scheduler.py` |
+| `task_persistence.py` | Daily file creation + task state persistence | `python scripts/task_persistence.py` |
+| `task_index_manager.py` | Cross-session task index management | `python scripts/task_index_manager.py` |
+
+These scripts are **optional** — Claude can perform DAG scheduling directly for small task sets (< 20 tasks). Use scripts for large task sets or when persistence across sessions is needed.
+
+## Daily State Files (Optional)
+
+For long-running projects, task-workflow can create daily state snapshots:
+
+```
+~/.openclaw/workspace/task_backlog/
+├── task-workflow-progress-2026-04-08.md  (archived)
+└── task-workflow-progress-2026-04-09.md  (active)
+```
+
+These are **machine state files** — structured task tables and progress events.
+They are NOT human-facing session logs (that's progress.md's job).
+
+Auto-migration at CST 00:00 moves pending tasks to the new day's file.
+
+## Integration with TriaDev
+
+When used as part of the Golden Triangle:
+
+**What task-workflow reads:**
+- `triadev-handoff.json` → `planning.tasks_extracted` (input tasks)
+
+**What task-workflow writes:**
+- `triadev-handoff.json` → `scheduling.batches` (output schedule)
+- `triadev-handoff.json` → `scheduling.status` (pending → complete)
+
+**What task-workflow does NOT do:**
+- Does not create or modify `task_plan.md` (that's planning-with-files)
+- Does not create or modify `progress.md` (that's planning-with-files)
+- Does not create `SPEC.yaml` (that's tdd-sdd)
+- Does not make routing decisions (that's triadev)
+
+## Anti-Patterns
+
+| Don't | Do Instead |
+|-------|-----------|
+| Create a parallel progress log | Use progress.md (planning-with-files) for human-readable logs |
+| Schedule tasks without checking dependencies | Always validate DAG before scheduling |
+| Ignore complexity scores | Score every task; execute low-complexity first |
+| Skip cycle detection | Always check for circular dependencies |
+| Schedule completed tasks | Filter out already-completed tasks before DAG analysis |
+
+## Example
+
+**Input (from task_plan.md):**
+```markdown
+## Phase 2: Implementation
+- [ ] Create database schema (id: create-schema, complexity: 3)
+- [ ] Implement user model (id: impl-user-model, deps: create-schema, complexity: 5)
+- [ ] Implement auth middleware (id: impl-auth, deps: impl-user-model, complexity: 6)
+- [ ] Write API endpoints (id: write-endpoints, deps: impl-user-model, complexity: 5)
+- [ ] Integration tests (id: integration-tests, deps: impl-auth, write-endpoints, complexity: 7)
+```
+
+**Output (schedule):**
+```
+Batch 1: [create-schema]           complexity: 3
+Batch 2: [impl-user-model]         complexity: 5  (depends: create-schema)
+Batch 3: [impl-auth, write-endpoints]  complexity: 5-6  (parallel, both depend on impl-user-model)
+Batch 4: [integration-tests]       complexity: 7  (depends: impl-auth, write-endpoints)
+```
