@@ -9,9 +9,13 @@ import os
 import tempfile
 from pathlib import Path
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
+
 # Import will fail initially (module doesn't exist yet)
 # This is RED phase
-from lib.task_index_manager import TaskIndexManager, TaskIndex
+from task_index_manager import TaskIndexManager, TaskIndex
 
 
 class TestTaskIndexManager:

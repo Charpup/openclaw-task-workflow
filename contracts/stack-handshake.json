@@ -16,9 +16,11 @@
       "dynamic-task-insertion",
       "daily-task-persistence"
     ],
-    "scripts": {
-      "scheduler": "python scripts/task_scheduler.py",
-      "persistence": "python scripts/task_persistence.py"
+    "entrypoint": "python cli.py",
+    "commands": ["init-daily", "setup-cron", "list", "add", "update", "log", "cleanup", "demo"],
+    "modules": {
+      "scheduler": "scripts/task_scheduler.py",
+      "persistence": "scripts/task_persistence.py"
     }
   },
   "dependencies": {

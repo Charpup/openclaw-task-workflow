@@ -10,9 +10,9 @@ import argparse
 import json
 from datetime import datetime, timedelta
 
-# 添加 lib 目录到路径
-lib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
-sys.path.insert(0, lib_path)
+# 添加 scripts 目录到路径
+scripts_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
+sys.path.insert(0, scripts_path)
 
 from task_persistence import (
     TaskPersistenceManager, TaskRecord, TaskStatus,
@@ -273,47 +273,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# V3.1 New Commands
-def cmd_new_task(args):
-    """Create new task with auto-numbering (V3.1)"""
-    from lib.task_persistence_v31 import TaskPersistenceManagerV31
-    
-    manager = TaskPersistenceManagerV31()
-    task = manager.create_task(
-        name=args.name,
-        description=args.description or "",
-        estimated_time=args.time or "medium",
-        tool_calls_estimate=args.tools or 5,
-        decision_points=args.decisions or 0
-    )
-    
-    print(f"✅ Task created: {task.id} - {task.name}")
-    print(f"   Complexity: {task.complexity_score:.1f}")
-
-def cmd_monitor_start(args):
-    """Start monitoring a task (V3.1)"""
-    from lib.subagent_monitor import SubagentProgressMonitor
-    from lib.task_persistence_v31 import TaskPersistenceManagerV31
-    
-    manager = TaskPersistenceManagerV31()
-    task = manager.get_task_by_number(args.number)
-    
-    if not task:
-        print(f"❌ Task #{args.number:03d} not found")
-        return
-    
-    monitor = SubagentProgressMonitor(
-        task_id=task.id,
-        task_name=task.name
-    )
-    monitor.start()
-    
-    print(f"🔄 Monitoring started for {task.id}")
-    print(f"   Progress file: {monitor.progress_file}")
-
-# Add to main() argument parser
-# In main() function, add:
-#   subparsers.add_parser('new', help='Create new task with auto-numbering')
-#   subparsers.add_parser('monitor', help='Monitor task progress')
