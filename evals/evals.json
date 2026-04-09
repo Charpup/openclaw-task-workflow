@@ -2,53 +2,60 @@
   "skill_name": "task-workflow",
   "evals": [
     {
-      "id": 1,
-      "prompt": "I have 5 tasks for my project: research-api (no deps), design-schema (depends on research-api), implement-auth (depends on design-schema), write-tests (depends on implement-auth), deploy (depends on write-tests and implement-auth). Schedule these with DAG dependency resolution.",
-      "expected_output": "Builds a dependency DAG, performs topological sort, groups tasks into batches: Batch 1: research-api → Batch 2: design-schema → Batch 3: implement-auth → Batch 4: write-tests → Batch 5: deploy.",
+      "id": "dag-basic-01",
+      "prompt": "I have 5 tasks for my project: research-api (no deps, complexity 2), design-schema (depends on research-api, complexity 4), implement-auth (depends on design-schema, complexity 6), write-tests (depends on implement-auth, complexity 5), deploy (depends on write-tests and implement-auth, complexity 3). Schedule these with dependency resolution.",
+      "expected_output": "Builds a DAG, performs topological sort, groups into batches respecting dependencies and ordered by complexity within each batch.",
       "assertions": [
         {
-          "text": "Output identifies correct batch ordering",
+          "text": "Correct batch ordering respecting dependencies",
           "type": "llm_judge",
-          "criteria": "Tasks are scheduled in dependency order with research-api first and deploy last, correctly resolving the DAG."
+          "criteria": "Tasks are scheduled so that no task runs before its dependencies complete. research-api must be in an earlier batch than design-schema, etc."
         },
         {
-          "text": "Mentions DAG or dependency resolution",
+          "text": "Mentions scheduling concepts",
           "type": "contains_any",
           "values": ["DAG", "dependency", "batch", "topological", "schedule"]
         }
       ]
     },
     {
-      "id": 2,
-      "prompt": "Initialize the daily task workflow file for today.",
-      "expected_output": "Creates a new daily markdown file at ~/.openclaw/workspace/task_backlog/task-workflow-progress-YYYY-MM-DD.md with proper headers and empty task queue.",
+      "id": "handoff-integration-01",
+      "prompt": "Here's my triadev-handoff.json with tasks_extracted already populated:\n{\"version\":\"1.0.0\",\"project\":\"auth-api\",\"route\":\"extended\",\"current_phase\":\"scheduling\",\"planning\":{\"status\":\"complete\",\"tasks_extracted\":[{\"id\":\"create-schema\",\"name\":\"Create DB schema\",\"complexity\":3,\"dependencies\":[]},{\"id\":\"impl-model\",\"name\":\"Implement user model\",\"complexity\":5,\"dependencies\":[\"create-schema\"]},{\"id\":\"write-tests\",\"name\":\"Write integration tests\",\"complexity\":6,\"dependencies\":[\"impl-model\"]}]}}\nSchedule these tasks and update the handoff file.",
+      "expected_output": "Reads tasks from handoff.json planning.tasks_extracted. Produces batches. Writes scheduling.batches and scheduling.status to handoff file.",
       "assertions": [
         {
-          "text": "Creates or references the daily markdown file",
-          "type": "contains_any",
-          "values": ["task-workflow-progress", "task_backlog", "init-daily", "daily file"]
+          "text": "Reads from handoff file",
+          "type": "llm_judge",
+          "criteria": "The response reads tasks from the triadev-handoff.json planning.tasks_extracted field, not from some other source."
         },
         {
-          "text": "File path includes date",
+          "text": "Writes schedule back to handoff",
           "type": "llm_judge",
-          "criteria": "The response references a date-stamped file path following the task-workflow naming convention."
+          "criteria": "The response updates triadev-handoff.json with scheduling.batches and scheduling.status fields."
         }
       ]
     },
     {
-      "id": 3,
-      "prompt": "Mark task 'implement-auth' as completed with a note that JWT tokens were used.",
-      "expected_output": "Updates the task status to 'completed' in the daily markdown file, appends the JWT note to the task log entry.",
+      "id": "cycle-detection-01",
+      "prompt": "Schedule these tasks: task-a depends on task-c, task-b depends on task-a, task-c depends on task-b.",
+      "expected_output": "Detects circular dependency (a→c→b→a) and reports the cycle. Does not produce a schedule.",
       "assertions": [
         {
-          "text": "References status update to completed",
-          "type": "contains_any",
-          "values": ["completed", "implement-auth", "status", "update"]
-        },
+          "text": "Detects and reports circular dependency",
+          "type": "llm_judge",
+          "criteria": "The response identifies the circular dependency between the three tasks and refuses to produce a schedule, explaining the cycle."
+        }
+      ]
+    },
+    {
+      "id": "negative-01",
+      "prompt": "Add two items to my grocery list: milk and eggs.",
+      "expected_output": "This is not a task scheduling request. Should not trigger task-workflow.",
+      "assertions": [
         {
-          "text": "Note about JWT is captured",
-          "type": "contains_any",
-          "values": ["JWT", "note", "log"]
+          "text": "Does not trigger DAG scheduling",
+          "type": "llm_judge",
+          "criteria": "The response handles this as a simple list request without invoking DAG scheduling, batch ordering, or task-workflow concepts."
         }
       ]
     }

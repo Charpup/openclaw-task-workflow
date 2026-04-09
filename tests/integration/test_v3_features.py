@@ -9,8 +9,8 @@ import pytest
 import tempfile
 from pathlib import Path
 
-# 添加 lib 目录到路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'lib'))
+# 添加 scripts 目录到路径
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
 
 from task_scheduler import TaskScheduler, DynamicTaskManager, TaskNode, TaskStatus
 from task_persistence import TaskPersistenceManager
