@@ -116,7 +116,8 @@ If used with triadev, write the schedule to `triadev-handoff.json`:
 As tasks complete:
 1. Update task status in the schedule
 2. Check if next batch is unblocked (all dependencies satisfied)
-3. Report progress summary
+3. **Before** marking a batch complete, invoke [`verification-before-completion`](../verification-before-completion/SKILL.md) skill to verify all task IDs in the batch appear in `triadev-handoff.json.implementation.completed` with matching counts
+4. Report progress summary
 
 ## Dynamic Task Insertion
 
