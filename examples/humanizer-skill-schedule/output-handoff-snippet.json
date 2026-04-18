@@ -1,0 +1,35 @@
+{
+  "_comment": "How the humanizer-skill schedule would live inside a triadev-handoff.json. Excerpt shows only scheduling + planning sections for brevity.",
+  "version": "1.0.0",
+  "project": "humanizer-skill",
+  "route": "extended",
+  "current_phase": "scheduling",
+  "planning": {
+    "status": "complete",
+    "files": ["task_plan.md", "findings.md", "progress.md"],
+    "tasks_extracted": [
+      {"id": "T1",  "name": "Fork blader/humanizer → Charpup/humanizer", "complexity": 1, "dependencies": []},
+      {"id": "T2",  "name": "创建项目目录",                                "complexity": 1, "dependencies": []},
+      {"id": "T3",  "name": "Clone fork 到本地",                           "complexity": 1, "dependencies": ["T1"]},
+      {"id": "T7",  "name": "构建 32 模式合并分类体系",                    "complexity": 7, "dependencies": ["T4", "T5", "T6"]},
+      {"id": "T13", "name": "SKILL.md 主体",                              "complexity": 5, "dependencies": ["T8", "T9", "T10", "T11", "T12"]}
+    ]
+  },
+  "scheduling": {
+    "status": "complete",
+    "batches": [
+      ["T1", "T2", "T16", "T6"],
+      ["T3"],
+      ["T4", "T5"],
+      ["T7"],
+      ["T9", "T10", "T11", "T12", "T8"],
+      ["T13"],
+      ["T14", "T15"],
+      ["T17"],
+      ["T18"],
+      ["T19"],
+      ["T20"],
+      ["T21"]
+    ]
+  }
+}
