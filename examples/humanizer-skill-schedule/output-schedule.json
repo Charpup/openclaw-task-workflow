@@ -1,0 +1,62 @@
+{
+  "project": "humanizer-skill",
+  "source": "task_plan.md",
+  "tasks_extracted": [
+    {"id": "T1",  "name": "Fork blader/humanizer → Charpup/humanizer",     "complexity": 1, "dependencies": []},
+    {"id": "T2",  "name": "创建项目目录",                                    "complexity": 1, "dependencies": []},
+    {"id": "T3",  "name": "Clone fork 到本地",                               "complexity": 1, "dependencies": ["T1"]},
+    {"id": "T4",  "name": "提取 EN SKILL.md 到工作笔记",                     "complexity": 3, "dependencies": ["T3"]},
+    {"id": "T5",  "name": "提取 ZH SKILL.md 到工作笔记",                     "complexity": 3, "dependencies": ["T3"]},
+    {"id": "T6",  "name": "整理 Wikipedia 模式研究",                         "complexity": 4, "dependencies": []},
+    {"id": "T7",  "name": "构建 32 模式合并分类体系",                        "complexity": 7, "dependencies": ["T4", "T5", "T6"]},
+    {"id": "T8",  "name": "patterns-full.md 撰写",                          "complexity": 5, "dependencies": ["T7"]},
+    {"id": "T9",  "name": "ai-vocab-en.md",                                 "complexity": 2, "dependencies": ["T7"]},
+    {"id": "T10", "name": "ai-vocab-zh.md",                                 "complexity": 2, "dependencies": ["T7"]},
+    {"id": "T11", "name": "scoring-rubric.md",                              "complexity": 3, "dependencies": ["T7"]},
+    {"id": "T12", "name": "voice-calibration.md",                           "complexity": 3, "dependencies": ["T7"]},
+    {"id": "T13", "name": "SKILL.md 主体",                                  "complexity": 5, "dependencies": ["T8", "T9", "T10", "T11", "T12"]},
+    {"id": "T14", "name": "before-after 示例 EN+ZH",                        "complexity": 3, "dependencies": ["T13"]},
+    {"id": "T15", "name": "evals.json",                                     "complexity": 4, "dependencies": ["T13"]},
+    {"id": "T16", "name": "skill-creator 迭代（跳过）",                       "complexity": 1, "dependencies": []},
+    {"id": "T17", "name": "结构验证 + 冒烟测试输入准备",                      "complexity": 2, "dependencies": ["T13", "T14", "T15"]},
+    {"id": "T18", "name": "安装 skill",                                     "complexity": 2, "dependencies": ["T17"]},
+    {"id": "T19", "name": "PR 分支推送",                                    "complexity": 2, "dependencies": ["T18"]},
+    {"id": "T20", "name": "PR 提交 blader/humanizer#94",                    "complexity": 1, "dependencies": ["T19"]},
+    {"id": "T21", "name": "/summarize 归档",                                "complexity": 1, "dependencies": ["T20"]}
+  ],
+  "batches": [
+    ["T1", "T2", "T16", "T6"],
+    ["T3"],
+    ["T4", "T5"],
+    ["T7"],
+    ["T9", "T10", "T11", "T12", "T8"],
+    ["T13"],
+    ["T14", "T15"],
+    ["T17"],
+    ["T18"],
+    ["T19"],
+    ["T20"],
+    ["T21"]
+  ],
+  "batch_metadata": [
+    {"batch": 1, "parallelism": 4, "max_complexity": 4, "note": "All dep-free tasks. Ordered by complexity: T1(1), T2(1), T16(1), T6(4)."},
+    {"batch": 2, "parallelism": 1, "max_complexity": 1, "note": "T3 unlocks only after T1 (fork)."},
+    {"batch": 3, "parallelism": 2, "max_complexity": 3, "note": "T4/T5 run in parallel after clone."},
+    {"batch": 4, "parallelism": 1, "max_complexity": 7, "note": "T7 is the fan-in point — highest complexity task in the plan."},
+    {"batch": 5, "parallelism": 5, "max_complexity": 5, "note": "Fan-out from T7. Ordered: T9(2), T10(2), T11(3), T12(3), T8(5)."},
+    {"batch": 6, "parallelism": 1, "max_complexity": 5, "note": "T13 is the fan-in from all 5 reference files."},
+    {"batch": 7, "parallelism": 2, "max_complexity": 4, "note": "T14/T15 parallel after SKILL.md done."},
+    {"batch": 8, "parallelism": 1, "max_complexity": 2, "note": "Final verification before deployment."},
+    {"batch": 9, "parallelism": 1, "max_complexity": 2, "note": "Install step."},
+    {"batch": 10, "parallelism": 1, "max_complexity": 2, "note": "Push PR branch."},
+    {"batch": 11, "parallelism": 1, "max_complexity": 1, "note": "Submit PR."},
+    {"batch": 12, "parallelism": 1, "max_complexity": 1, "note": "Archive (pending)."}
+  ],
+  "summary": {
+    "total_tasks": 21,
+    "total_batches": 12,
+    "critical_path": ["T1", "T3", "T4", "T7", "T8", "T13", "T14", "T17", "T18", "T19", "T20", "T21"],
+    "critical_path_complexity_sum": 33,
+    "max_parallelism": 5
+  }
+}

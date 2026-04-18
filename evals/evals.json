@@ -1,5 +1,19 @@
 {
   "skill_name": "task-workflow",
+  "eval_schema_version": "2.0",
+  "assertion_types_supported": {
+    "llm_judge": "Subjective check, prone to leniency. Use sparingly.",
+    "contains_any": "Deterministic. Response contains at least one value.",
+    "contains_all": "Deterministic. Response contains every value.",
+    "does_not_contain": "Deterministic. Response contains no value from values[].",
+    "file_exists": "Deterministic. File at path exists.",
+    "no_file_exists": "Deterministic. File at path does NOT exist.",
+    "json_path_equals": "Deterministic. JSON at file has path equal to expected.",
+    "json_path_in": "Deterministic. JSON at file has path whose value is one of values[].",
+    "json_path_length": "Deterministic. JSON array at path has expected length.",
+    "json_schema_valid": "Deterministic. JSON at file validates against schema_path.",
+    "sequence_order": "Deterministic. Response contains all values in the given order (for batch ordering checks)."
+  },
   "evals": [
     {
       "id": "dag-basic-01",
@@ -7,31 +21,45 @@
       "expected_output": "Builds a DAG, performs topological sort, groups into batches respecting dependencies and ordered by complexity within each batch.",
       "assertions": [
         {
-          "text": "Correct batch ordering respecting dependencies",
-          "type": "llm_judge",
-          "criteria": "Tasks are scheduled so that no task runs before its dependencies complete. research-api must be in an earlier batch than design-schema, etc."
+          "text": "Batches announced in correct dependency order",
+          "type": "sequence_order",
+          "values": ["research-api", "design-schema", "implement-auth", "write-tests", "deploy"]
         },
         {
           "text": "Mentions scheduling concepts",
           "type": "contains_any",
           "values": ["DAG", "dependency", "batch", "topological", "schedule"]
+        },
+        {
+          "text": "research-api is in first batch",
+          "type": "llm_judge",
+          "criteria": "The schedule output shows research-api in batch 1 (or the first batch group), since it has no dependencies."
         }
       ]
     },
     {
       "id": "handoff-integration-01",
-      "prompt": "Here's my triadev-handoff.json with tasks_extracted already populated:\n{\"version\":\"1.0.0\",\"project\":\"auth-api\",\"route\":\"extended\",\"current_phase\":\"scheduling\",\"planning\":{\"status\":\"complete\",\"tasks_extracted\":[{\"id\":\"create-schema\",\"name\":\"Create DB schema\",\"complexity\":3,\"dependencies\":[]},{\"id\":\"impl-model\",\"name\":\"Implement user model\",\"complexity\":5,\"dependencies\":[\"create-schema\"]},{\"id\":\"write-tests\",\"name\":\"Write integration tests\",\"complexity\":6,\"dependencies\":[\"impl-model\"]}]}}\nSchedule these tasks and update the handoff file.",
+      "prompt": "Here's my triadev-handoff.json with tasks_extracted already populated:\n{\"version\":\"1.0.0\",\"project\":\"auth-api\",\"route\":\"extended\",\"current_phase\":\"scheduling\",\"planning\":{\"status\":\"complete\",\"files\":[\"task_plan.md\"],\"tasks_extracted\":[{\"id\":\"create-schema\",\"name\":\"Create DB schema\",\"complexity\":3,\"dependencies\":[]},{\"id\":\"impl-model\",\"name\":\"Implement user model\",\"complexity\":5,\"dependencies\":[\"create-schema\"]},{\"id\":\"write-tests\",\"name\":\"Write integration tests\",\"complexity\":6,\"dependencies\":[\"impl-model\"]}]},\"scheduling\":{\"status\":\"pending\",\"batches\":[]},\"value_gate\":{\"status\":\"pending\",\"verdict\":null,\"review_path\":null},\"implementation\":{\"status\":\"pending\",\"completed\":[],\"current\":null,\"spec_path\":null,\"tdd_state_path\":null}}\nSchedule these tasks and update the handoff file.",
       "expected_output": "Reads tasks from handoff.json planning.tasks_extracted. Produces batches. Writes scheduling.batches and scheduling.status to handoff file.",
       "assertions": [
         {
-          "text": "Reads from handoff file",
-          "type": "llm_judge",
-          "criteria": "The response reads tasks from the triadev-handoff.json planning.tasks_extracted field, not from some other source."
+          "text": "Updates handoff scheduling status to complete",
+          "type": "json_path_equals",
+          "file": "triadev-handoff.json",
+          "path": "$.scheduling.status",
+          "equals": "complete"
         },
         {
-          "text": "Writes schedule back to handoff",
+          "text": "Writes exactly 3 batches",
+          "type": "json_path_length",
+          "file": "triadev-handoff.json",
+          "path": "$.scheduling.batches",
+          "length": 3
+        },
+        {
+          "text": "First batch contains create-schema",
           "type": "llm_judge",
-          "criteria": "The response updates triadev-handoff.json with scheduling.batches and scheduling.status fields."
+          "criteria": "scheduling.batches[0] contains 'create-schema' (the only dependency-free task)."
         }
       ]
     },
@@ -41,9 +69,19 @@
       "expected_output": "Detects circular dependency (a→c→b→a) and reports the cycle. Does not produce a schedule.",
       "assertions": [
         {
-          "text": "Detects and reports circular dependency",
-          "type": "llm_judge",
-          "criteria": "The response identifies the circular dependency between the three tasks and refuses to produce a schedule, explaining the cycle."
+          "text": "Reports the cycle explicitly",
+          "type": "contains_any",
+          "values": ["circular", "cycle", "cyclic"]
+        },
+        {
+          "text": "Does not produce batches",
+          "type": "does_not_contain",
+          "values": ["Batch 1:", "Batch 2:", "scheduled into batches"]
+        },
+        {
+          "text": "Names the cycling tasks",
+          "type": "contains_all",
+          "values": ["task-a", "task-b", "task-c"]
         }
       ]
     },
@@ -53,9 +91,102 @@
       "expected_output": "This is not a task scheduling request. Should not trigger task-workflow.",
       "assertions": [
         {
-          "text": "Does not trigger DAG scheduling",
+          "text": "Does not produce batches",
+          "type": "does_not_contain",
+          "values": ["Batch 1:", "DAG", "complexity score", "dependency resolution"]
+        },
+        {
+          "text": "No handoff file created",
+          "type": "no_file_exists",
+          "path": "triadev-handoff.json"
+        }
+      ]
+    },
+    {
+      "id": "batch-ordering-complexity-01",
+      "prompt": "Schedule these tasks, all with zero dependencies: task-low (complexity 2), task-mid (complexity 5), task-high (complexity 8), task-trivial (complexity 1). They can all run in parallel, but order within the batch should reflect complexity.",
+      "expected_output": "All four tasks in Batch 1, ordered from lowest to highest complexity: task-trivial → task-low → task-mid → task-high.",
+      "assertions": [
+        {
+          "text": "All tasks in same batch (parallel)",
           "type": "llm_judge",
-          "criteria": "The response handles this as a simple list request without invoking DAG scheduling, batch ordering, or task-workflow concepts."
+          "criteria": "All four tasks are in Batch 1 (or the single first batch). No dependencies forces them into the same batch."
+        },
+        {
+          "text": "Within-batch order is ascending by complexity",
+          "type": "sequence_order",
+          "values": ["task-trivial", "task-low", "task-mid", "task-high"]
+        }
+      ]
+    },
+    {
+      "id": "cross-session-persistence-01",
+      "prompt": "Yesterday I created a task workflow file with 3 tasks. Two were running at CST 00:00 when auto-migration kicked in:\n\nYesterday's file (~/.openclaw/workspace/task_backlog/task-workflow-progress-2026-04-17.md):\n```\n| ID | Task | Complexity | Dependencies | Status | Batch |\n|----|------|-----------|--------------|--------|-------|\n| a | Task A | 3 | - | ✅ Completed | 1 |\n| b | Task B | 5 | - | 🔄 Running | 1 |\n| c | Task C | 4 | b | ⏳ Pending | 2 |\n```\n\nWhat should today's file (2026-04-18) contain?",
+      "expected_output": "Today's file has task b (running → pending, marked migrated) and task c (pending, marked migrated). Task a (completed) is NOT carried over.",
+      "assertions": [
+        {
+          "text": "Completed task 'a' not migrated",
+          "type": "llm_judge",
+          "criteria": "Task 'a' does NOT appear in today's migrated section (completed tasks stay in history)."
+        },
+        {
+          "text": "Running task 'b' migrated with reset status",
+          "type": "contains_all",
+          "values": ["b", "migrated"]
+        },
+        {
+          "text": "Pending task 'c' carried over",
+          "type": "contains_any",
+          "values": ["Task C", "task c"]
+        },
+        {
+          "text": "Status reset logic mentioned",
+          "type": "contains_any",
+          "values": ["reset", "pending", "restart"]
+        }
+      ]
+    },
+    {
+      "id": "standalone-mode-01",
+      "prompt": "I have a task_plan.md but no triadev-handoff.json (I'm using task-workflow standalone). Schedule these:\n\n## Phase 2: Implementation\n- [ ] Setup database (id: setup-db, complexity: 2)\n- [ ] Write API routes (id: write-routes, deps: setup-db, complexity: 5)\n- [ ] Add validation (id: add-validation, deps: write-routes, complexity: 3)\n- [ ] Integration tests (id: int-tests, deps: add-validation, complexity: 6)",
+      "expected_output": "Works in standalone mode. Outputs schedule as formatted text. Does NOT create triadev-handoff.json (not using triadev).",
+      "assertions": [
+        {
+          "text": "Does not create handoff file in standalone mode",
+          "type": "no_file_exists",
+          "path": "triadev-handoff.json"
+        },
+        {
+          "text": "Outputs schedule as text",
+          "type": "contains_all",
+          "values": ["setup-db", "write-routes", "add-validation", "int-tests"]
+        },
+        {
+          "text": "Correct dependency order",
+          "type": "sequence_order",
+          "values": ["setup-db", "write-routes", "add-validation", "int-tests"]
+        }
+      ]
+    },
+    {
+      "id": "dynamic-insertion-01",
+      "prompt": "I currently have this schedule running:\nBatch 1: [a, b] (completed)\nBatch 2: [c] (running)\nBatch 3: [d] (pending, depends on c)\n\nInsert a new task 'hotfix' with complexity 2 and no dependencies. Re-schedule the remaining work.",
+      "expected_output": "Re-runs DAG analysis on remaining tasks only (c, d, hotfix). Since hotfix has no deps and c is already running, hotfix joins the currently-running batch or inserts a new parallel batch.",
+      "assertions": [
+        {
+          "text": "Does not re-schedule completed tasks",
+          "type": "does_not_contain",
+          "values": ["re-scheduling a", "re-scheduling b", "batch 1 updated"]
+        },
+        {
+          "text": "Inserts hotfix into remaining schedule",
+          "type": "contains_any",
+          "values": ["hotfix"]
+        },
+        {
+          "text": "Announces schedule change",
+          "type": "contains_any",
+          "values": ["schedule change", "updated schedule", "inserting", "re-scheduling"]
         }
       ]
     }
