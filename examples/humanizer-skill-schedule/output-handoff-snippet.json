@@ -1,5 +1,5 @@
 {
-  "_comment": "How the humanizer-skill schedule would live inside a triadev-handoff.json. Excerpt shows only scheduling + planning sections for brevity.",
+  "_comment": "How the humanizer-skill schedule lives inside a triadev-handoff.json. Full tasks_extracted array preserved so the DAG is internally self-consistent (every id referenced in scheduling.batches and dependencies is present).",
   "version": "1.0.0",
   "project": "humanizer-skill",
   "route": "extended",
@@ -8,11 +8,27 @@
     "status": "complete",
     "files": ["task_plan.md", "findings.md", "progress.md"],
     "tasks_extracted": [
-      {"id": "T1",  "name": "Fork blader/humanizer → Charpup/humanizer", "complexity": 1, "dependencies": []},
-      {"id": "T2",  "name": "创建项目目录",                                "complexity": 1, "dependencies": []},
-      {"id": "T3",  "name": "Clone fork 到本地",                           "complexity": 1, "dependencies": ["T1"]},
-      {"id": "T7",  "name": "构建 32 模式合并分类体系",                    "complexity": 7, "dependencies": ["T4", "T5", "T6"]},
-      {"id": "T13", "name": "SKILL.md 主体",                              "complexity": 5, "dependencies": ["T8", "T9", "T10", "T11", "T12"]}
+      {"id": "T1",  "name": "Fork blader/humanizer → Charpup/humanizer",     "complexity": 1, "dependencies": []},
+      {"id": "T2",  "name": "创建项目目录",                                    "complexity": 1, "dependencies": []},
+      {"id": "T3",  "name": "Clone fork 到本地",                               "complexity": 1, "dependencies": ["T1"]},
+      {"id": "T4",  "name": "提取 EN SKILL.md 到工作笔记",                     "complexity": 3, "dependencies": ["T3"]},
+      {"id": "T5",  "name": "提取 ZH SKILL.md 到工作笔记",                     "complexity": 3, "dependencies": ["T3"]},
+      {"id": "T6",  "name": "整理 Wikipedia 模式研究",                         "complexity": 4, "dependencies": []},
+      {"id": "T7",  "name": "构建 32 模式合并分类体系",                        "complexity": 7, "dependencies": ["T4", "T5", "T6"]},
+      {"id": "T8",  "name": "patterns-full.md 撰写",                          "complexity": 5, "dependencies": ["T7"]},
+      {"id": "T9",  "name": "ai-vocab-en.md",                                 "complexity": 2, "dependencies": ["T7"]},
+      {"id": "T10", "name": "ai-vocab-zh.md",                                 "complexity": 2, "dependencies": ["T7"]},
+      {"id": "T11", "name": "scoring-rubric.md",                              "complexity": 3, "dependencies": ["T7"]},
+      {"id": "T12", "name": "voice-calibration.md",                           "complexity": 3, "dependencies": ["T7"]},
+      {"id": "T13", "name": "SKILL.md 主体",                                  "complexity": 5, "dependencies": ["T8", "T9", "T10", "T11", "T12"]},
+      {"id": "T14", "name": "before-after 示例 EN+ZH",                        "complexity": 3, "dependencies": ["T13"]},
+      {"id": "T15", "name": "evals.json",                                     "complexity": 4, "dependencies": ["T13"]},
+      {"id": "T16", "name": "skill-creator 迭代（跳过）",                       "complexity": 1, "dependencies": []},
+      {"id": "T17", "name": "结构验证 + 冒烟测试输入准备",                      "complexity": 2, "dependencies": ["T13", "T14", "T15"]},
+      {"id": "T18", "name": "安装 skill",                                     "complexity": 2, "dependencies": ["T17"]},
+      {"id": "T19", "name": "PR 分支推送",                                    "complexity": 2, "dependencies": ["T18"]},
+      {"id": "T20", "name": "PR 提交 blader/humanizer#94",                    "complexity": 1, "dependencies": ["T19"]},
+      {"id": "T21", "name": "/summarize 归档",                                "complexity": 1, "dependencies": ["T20"]}
     ]
   },
   "scheduling": {

@@ -40,7 +40,7 @@ Coordinates via `triadev-handoff.json` — reads extracted tasks, writes batch s
 
 | Addition | Purpose |
 |----------|---------|
-| `examples/humanizer-skill-schedule/` | **GOLD** real-run reference — 21-task humanizer-skill project with input task_plan, full DAG output, and handoff snippet. Shows fan-out (T7 → 5 tasks), fan-in (T13 ← 5 tasks), critical path (12 tasks, complexity sum 35), max parallelism (5). |
+| `examples/humanizer-skill-schedule/` | **GOLD** real-run reference — 21-task humanizer-skill project with input task_plan, full DAG output, and handoff snippet. Shows fan-out (T7 → 5 tasks), fan-in (T13 ← 5 tasks), critical path (12 tasks, complexity sum 33), max parallelism (5). |
 | `evals/evals.json` (4 → 8 cases) | New cases: within-batch complexity ordering, cross-session migration (CST 00:00 behavior), standalone mode (no triadev-handoff), dynamic insertion mid-execution. ~80% deterministic assertions (sequence_order, json_path_*, file_exists). |
 
 ## Project Structure
@@ -77,7 +77,7 @@ See [`examples/humanizer-skill-schedule/`](examples/humanizer-skill-schedule/) f
 - Mixed complexities (1 to 7) with real reasoning
 - Fan-out: one high-complexity task (T7 merge 32 patterns) unlocks 5 downstream references
 - Fan-in: the main `SKILL.md` draft (T13) requires all 5 reference files
-- Critical path length 12, total complexity sum 35, max parallelism 5
+- Critical path length 12, total complexity sum 33, max parallelism 5
 - Both raw `output-schedule.json` format and the triadev-handoff slice
 
 ## Changelog
